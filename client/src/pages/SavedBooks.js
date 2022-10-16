@@ -1,23 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Jumbotron, Container, CardColumns, Card, Button } from 'react-bootstrap';
 import {useMutation, useQuery} from '@apollo/client'
-import { getMe, deleteBook } from '../utils/API';
 import Auth from '../utils/auth';
 import { removeBookId } from '../utils/localStorage';
 import { GET_ME } from '../utils/queries';
 import { REMOVE_BOOK } from '../utils/mutations';
 
 const SavedBooks = () => {
- // const [userData, setUserData] = useState({});
 
-  //const {loading, data} = useQuery(GET_ME);
   const { loading, data} = useQuery(GET_ME)
   const userData = data?.me || {}
-  console.log("userData", userData)
-  console.log("data", data)
-  const [deleteBook] = useMutation(REMOVE_BOOK)
-  // use this to determine if `useEffect()` hook needs to run again
-  //const userDataLength = Object.keys(userData).length;
+  
+  const [deleteBook] = useMutation(REMOVE_BOOK, {
+    update(cache) {
+      try {
+        const { me } = cache.readQuery({ query: GET_ME})
+        cache.modify({
+          id: cache.identify(me),
+          fields: {
+            savedBooks({DELETE}) {
+              return DELETE;
+            }
+          }
+        })
+    } catch (e) {
+      console.warn("Something went wrong with cache update")
+    }
+}})
 
  // create function that accepts the book's mongo _id value as param and deletes the book from the database
   const handleDeleteBook = async (bookId) => {
@@ -39,8 +48,6 @@ const SavedBooks = () => {
   };
 
   // if data isn't here yet, say so
-  //if (!userDataLength) {
-  //if (!userData) {
   if (loading) {
     return <h2>LOADING...</h2>;
   }
